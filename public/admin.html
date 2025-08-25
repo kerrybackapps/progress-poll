@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Progress Poll</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/flatly/bootstrap.min.css" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            padding: 20px;
+            background-color: #ecf0f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .admin-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .form-control {
+            font-size: 1.1rem;
+            padding: 10px;
+        }
+        .btn {
+            font-size: 1.1rem;
+            padding: 10px 20px;
+        }
+        .alert {
+            margin-top: 20px;
+        }
+        #adminControls {
+            display: none;
+        }
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        .stat-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-panel">
+        <h2>🔒 Admin Panel</h2>
+        
+        <div id="loginForm">
+            <div class="mb-3">
+                <label for="password" class="form-label">Admin Password</label>
+                <input type="password" class="form-control" id="password" placeholder="Enter admin password">
+            </div>
+            <button class="btn btn-primary w-100" onclick="login()">Login</button>
+        </div>
+
+        <div id="adminControls">
+            <div class="stats">
+                <h4 class="mb-3">Current Statistics</h4>
+                <div class="stat-item">
+                    <span>Need Assistance:</span>
+                    <span class="stat-value" id="needAssistanceCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Ready:</span>
+                    <span class="stat-value" id="readyCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Total Responses:</span>
+                    <span class="stat-value" id="totalCount">0</span>
+                </div>
+            </div>
+            
+            <button class="btn btn-danger w-100 mb-3" onclick="clearAllResponses()">
+                🗑️ Clear All Responses
+            </button>
+            
+            <button class="btn btn-secondary w-100" onclick="backToMain()">
+                ← Back to Poll
+            </button>
+        </div>
+
+        <div id="alertContainer"></div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        socket.on('updateResults', (counts) => {
+            updateStats(counts);
+        });
+
+        function updateStats(counts) {
+            document.getElementById('needAssistanceCount').textContent = counts.needAssistance;
+            document.getElementById('readyCount').textContent = counts.ready;
+            document.getElementById('totalCount').textContent = counts.needAssistance + counts.ready;
+        }
+
+        async function login() {
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.getElementById('adminControls').style.display = 'block';
+                    showAlert('Successfully logged in!', 'success');
+                    
+                    const resultsResponse = await fetch('/api/results');
+                    const counts = await resultsResponse.json();
+                    updateStats(counts);
+                } else {
+                    showAlert('Invalid password. Please try again.', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error logging in. Please try again.', 'danger');
+            }
+        }
+
+        async function clearAllResponses() {
+            if (!confirm('Are you sure you want to clear all responses? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/clear-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('All responses have been cleared successfully!', 'success');
+                    updateStats({ needAssistance: 0, ready: 0 });
+                } else {
+                    showAlert('Error clearing responses. Please make sure you are logged in.', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error clearing responses. Please try again.', 'danger');
+            }
+        }
+
+        function backToMain() {
+            window.location.href = '/';
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>

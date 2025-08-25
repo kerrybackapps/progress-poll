@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Poll</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/flatly/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            padding: 20px;
+            background-color: #ecf0f1;
+        }
+        .container-fluid {
+            max-width: 1400px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 500px;
+        }
+        .btn-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+            gap: 30px;
+        }
+        .btn-vote {
+            font-size: 1.2rem;
+            padding: 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .btn-vote:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .admin-link {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            opacity: 0.3;
+        }
+        .admin-link:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1>Progress Poll</h1>
+        <div class="row">
+            <div class="col-md-5">
+                <div class="panel">
+                    <div class="btn-panel">
+                        <button class="btn btn-warning btn-lg btn-vote" id="btnAssistance">
+                            🤚 I need some assistance
+                        </button>
+                        <button class="btn btn-success btn-lg btn-vote" id="btnReady">
+                            ✅ I'm ready to move on
+                        </button>
+                        <button class="btn btn-secondary btn-lg btn-vote" id="btnClear">
+                            🔄 Clear my response
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="panel">
+                    <h3 class="text-center mb-4">Current Responses</h3>
+                    <div class="chart-container">
+                        <canvas id="resultsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <a href="/admin" class="admin-link btn btn-sm btn-outline-secondary">Admin</a>
+
+    <script>
+        const socket = io();
+        
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('userId', userId);
+        }
+
+        const ctx = document.getElementById('resultsChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Need Assistance', 'Ready'],
+                datasets: [{
+                    label: 'Responses',
+                    data: [0, 0],
+                    backgroundColor: [
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(40, 167, 69, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(40, 167, 69, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 14
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        titleFont: {
+                            size: 16
+                        },
+                        bodyFont: {
+                            size: 14
+                        }
+                    }
+                }
+            }
+        });
+
+        function updateChart(counts) {
+            chart.data.datasets[0].data = [counts.needAssistance, counts.ready];
+            chart.update();
+        }
+
+        socket.on('updateResults', (counts) => {
+            updateChart(counts);
+        });
+
+        async function vote(voteType) {
+            try {
+                const response = await fetch('/api/vote', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ vote: voteType, userId: userId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    updateChart(data.counts);
+                }
+            } catch (error) {
+                console.error('Error voting:', error);
+            }
+        }
+
+        document.getElementById('btnAssistance').addEventListener('click', () => {
+            vote('needAssistance');
+        });
+
+        document.getElementById('btnReady').addEventListener('click', () => {
+            vote('ready');
+        });
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            vote('clear');
+        });
+
+        fetch('/api/results')
+            .then(response => response.json())
+            .then(counts => updateChart(counts));
+    </script>
+</body>
+</html>
