@@ -24,9 +24,28 @@
             margin: 0;
             border-radius: 0;
             display: none;
+            background-color: tomato !important;
+            border: none;
+            padding: 8px 0;
         }
         .assistance-alert.show {
             display: block;
+        }
+        .assistance-alert p {
+            margin: 0;
+            text-align: center;
+            color: white;
+            font-size: 1rem;
+        }
+        .btn-assistance {
+            background-color: tomato;
+            border-color: tomato;
+            color: white;
+        }
+        .btn-assistance:hover {
+            background-color: #ff5347;
+            border-color: #ff5347;
+            color: white;
         }
         .panel {
             background: white;
@@ -73,10 +92,9 @@
     </style>
 </head>
 <body>
-    <div class="alert alert-danger assistance-alert" id="assistanceAlert">
+    <div class="assistance-alert" id="assistanceAlert">
         <div class="container-fluid">
-            <h4 class="alert-heading">⚠️ Assistance Needed</h4>
-            <p class="mb-0"><strong><span id="assistanceCount">0</span></strong> participant(s) need help</p>
+            <p><strong><span id="assistanceCount">0</span></strong> participant(s) need help</p>
         </div>
     </div>
     
@@ -86,7 +104,7 @@
             <div class="col-md-5">
                 <div class="panel">
                     <div class="btn-panel">
-                        <button class="btn btn-warning btn-lg btn-vote" id="btnAssistance">
+                        <button class="btn btn-assistance btn-lg btn-vote" id="btnAssistance">
                             🤚 I need some assistance
                         </button>
                         <button class="btn btn-success btn-lg btn-vote" id="btnReady">
@@ -130,8 +148,8 @@
                 datasets: [{
                     label: 'Participants',
                     data: [0],
-                    backgroundColor: 'rgba(40, 167, 69, 0.8)',
-                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: '#18bc9c',
+                    borderColor: '#18bc9c',
                     borderWidth: 2
                 }]
             },
