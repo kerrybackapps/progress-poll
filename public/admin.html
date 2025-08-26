@@ -97,6 +97,13 @@
                 </div>
             </div>
             
+            <div class="mb-3">
+                <label class="form-label">Assistance Management</label>
+                <button class="btn btn-warning w-100" onclick="decrementAssistance()">
+                    ➖ Remove One Assistance Request
+                </button>
+            </div>
+            
             <button class="btn btn-danger w-100 mb-3" onclick="clearAllResponses()">
                 🗑️ Clear All Responses
             </button>
@@ -213,6 +220,27 @@
                 }
             } catch (error) {
                 showAlert('Error updating maximum. Please try again.', 'danger');
+            }
+        }
+        
+        async function decrementAssistance() {
+            try {
+                const response = await fetch('/api/admin/decrement-assistance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Removed one assistance request', 'success');
+                } else {
+                    showAlert(data.message || 'No assistance requests to remove', 'info');
+                }
+            } catch (error) {
+                showAlert('Error removing assistance request. Please try again.', 'danger');
             }
         }
         

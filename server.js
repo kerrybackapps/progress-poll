@@ -105,6 +105,22 @@ app.post('/api/admin/set-maximum', (req, res) => {
   }
 });
 
+app.post('/api/admin/decrement-assistance', (req, res) => {
+  if (!req.session.isAdmin) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  if (responses.needAssistance.size > 0) {
+    const firstUserId = responses.needAssistance.values().next().value;
+    responses.needAssistance.delete(firstUserId);
+    
+    io.emit('updateResults', getResponseData());
+    res.json({ success: true, removed: firstUserId });
+  } else {
+    res.json({ success: false, message: 'No assistance requests to remove' });
+  }
+});
+
 app.get('/api/results', (req, res) => {
   res.json(getResponseData());
 });
