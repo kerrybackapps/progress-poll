@@ -18,6 +18,8 @@ let responses = {
   ready: new Set()
 };
 
+let chartMaximum = 30;
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
@@ -28,10 +30,13 @@ app.use(session({
   cookie: { secure: false, httpOnly: true, maxAge: 3600000 }
 }));
 
-function getResponseCounts() {
+function getResponseData() {
   return {
-    needAssistance: responses.needAssistance.size,
-    ready: responses.ready.size
+    counts: {
+      needAssistance: responses.needAssistance.size,
+      ready: responses.ready.size
+    },
+    maximum: chartMaximum
   };
 }
 
@@ -57,8 +62,8 @@ app.post('/api/vote', (req, res) => {
     responses.ready.delete(userId);
   }
   
-  io.emit('updateResults', getResponseCounts());
-  res.json({ success: true, counts: getResponseCounts() });
+  io.emit('updateResults', getResponseData());
+  res.json({ success: true, ...getResponseData() });
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -80,18 +85,34 @@ app.post('/api/admin/clear-all', (req, res) => {
   responses.needAssistance.clear();
   responses.ready.clear();
   
-  io.emit('updateResults', getResponseCounts());
+  io.emit('updateResults', getResponseData());
   res.json({ success: true });
 });
 
+app.post('/api/admin/set-maximum', (req, res) => {
+  if (!req.session.isAdmin) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  const { maximum } = req.body;
+  
+  if (typeof maximum === 'number' && maximum > 0) {
+    chartMaximum = maximum;
+    io.emit('updateResults', getResponseData());
+    res.json({ success: true, maximum: chartMaximum });
+  } else {
+    res.status(400).json({ success: false, message: 'Invalid maximum value' });
+  }
+});
+
 app.get('/api/results', (req, res) => {
-  res.json(getResponseCounts());
+  res.json(getResponseData());
 });
 
 io.on('connection', (socket) => {
   console.log('New client connected');
   
-  socket.emit('updateResults', getResponseCounts());
+  socket.emit('updateResults', getResponseData());
   
   socket.on('disconnect', () => {
     console.log('Client disconnected');

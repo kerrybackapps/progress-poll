@@ -89,6 +89,14 @@
                 </div>
             </div>
             
+            <div class="mb-3">
+                <label for="chartMaximum" class="form-label">Chart Maximum (Ready Count)</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="chartMaximum" min="1" max="500" value="30">
+                    <button class="btn btn-outline-primary" onclick="updateMaximum()">Update</button>
+                </div>
+            </div>
+            
             <button class="btn btn-danger w-100 mb-3" onclick="clearAllResponses()">
                 🗑️ Clear All Responses
             </button>
@@ -104,14 +112,22 @@
     <script>
         const socket = io();
         
-        socket.on('updateResults', (counts) => {
-            updateStats(counts);
+        let currentMaximum = 30;
+        
+        socket.on('updateResults', (data) => {
+            updateStats(data);
         });
 
-        function updateStats(counts) {
+        function updateStats(data) {
+            const counts = data.counts || data;
             document.getElementById('needAssistanceCount').textContent = counts.needAssistance;
             document.getElementById('readyCount').textContent = counts.ready;
             document.getElementById('totalCount').textContent = counts.needAssistance + counts.ready;
+            
+            if (data.maximum) {
+                currentMaximum = data.maximum;
+                document.getElementById('chartMaximum').value = currentMaximum;
+            }
         }
 
         async function login() {
@@ -134,8 +150,8 @@
                     showAlert('Successfully logged in!', 'success');
                     
                     const resultsResponse = await fetch('/api/results');
-                    const counts = await resultsResponse.json();
-                    updateStats(counts);
+                    const data = await resultsResponse.json();
+                    updateStats(data);
                 } else {
                     showAlert('Invalid password. Please try again.', 'danger');
                 }
@@ -161,7 +177,7 @@
                 
                 if (data.success) {
                     showAlert('All responses have been cleared successfully!', 'success');
-                    updateStats({ needAssistance: 0, ready: 0 });
+                    updateStats({ counts: { needAssistance: 0, ready: 0 }, maximum: currentMaximum });
                 } else {
                     showAlert('Error clearing responses. Please make sure you are logged in.', 'danger');
                 }
@@ -170,6 +186,36 @@
             }
         }
 
+        async function updateMaximum() {
+            const maximum = parseInt(document.getElementById('chartMaximum').value);
+            
+            if (isNaN(maximum) || maximum < 1) {
+                showAlert('Please enter a valid number greater than 0', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/set-maximum', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ maximum })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`Chart maximum updated to ${maximum}`, 'success');
+                    currentMaximum = maximum;
+                } else {
+                    showAlert('Error updating maximum. Please make sure you are logged in.', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error updating maximum. Please try again.', 'danger');
+            }
+        }
+        
         function backToMain() {
             window.location.href = '/';
         }

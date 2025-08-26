@@ -15,6 +15,19 @@
         .container-fluid {
             max-width: 1400px;
         }
+        .assistance-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            margin: 0;
+            border-radius: 0;
+            display: none;
+        }
+        .assistance-alert.show {
+            display: block;
+        }
         .panel {
             background: white;
             border-radius: 8px;
@@ -60,6 +73,13 @@
     </style>
 </head>
 <body>
+    <div class="alert alert-danger assistance-alert" id="assistanceAlert">
+        <div class="container-fluid">
+            <h4 class="alert-heading">⚠️ Assistance Needed</h4>
+            <p class="mb-0"><strong><span id="assistanceCount">0</span></strong> participant(s) need help</p>
+        </div>
+    </div>
+    
     <div class="container-fluid">
         <h1>Progress Poll</h1>
         <div class="row">
@@ -80,7 +100,7 @@
             </div>
             <div class="col-md-7">
                 <div class="panel">
-                    <h3 class="text-center mb-4">Current Responses</h3>
+                    <h3 class="text-center mb-4">Progress Tracker</h3>
                     <div class="chart-container">
                         <canvas id="resultsChart"></canvas>
                     </div>
@@ -100,22 +120,18 @@
             localStorage.setItem('userId', userId);
         }
 
+        let chartMax = 30;
+
         const ctx = document.getElementById('resultsChart').getContext('2d');
         const chart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Need Assistance', 'Ready'],
+                labels: ['Ready to Move On'],
                 datasets: [{
-                    label: 'Responses',
-                    data: [0, 0],
-                    backgroundColor: [
-                        'rgba(255, 193, 7, 0.8)',
-                        'rgba(40, 167, 69, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(255, 193, 7, 1)',
-                        'rgba(40, 167, 69, 1)'
-                    ],
+                    label: 'Participants',
+                    data: [0],
+                    backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
                     borderWidth: 2
                 }]
             },
@@ -125,8 +141,9 @@
                 scales: {
                     y: {
                         beginAtZero: true,
+                        max: chartMax,
                         ticks: {
-                            stepSize: 1,
+                            stepSize: 5,
                             font: {
                                 size: 14
                             }
@@ -135,7 +152,8 @@
                     x: {
                         ticks: {
                             font: {
-                                size: 14
+                                size: 16,
+                                weight: 'bold'
                             }
                         }
                     }
@@ -156,13 +174,30 @@
             }
         });
 
-        function updateChart(counts) {
-            chart.data.datasets[0].data = [counts.needAssistance, counts.ready];
+        function updateDisplay(data) {
+            chart.data.datasets[0].data = [data.counts.ready];
+            
+            if (data.maximum) {
+                chartMax = data.maximum;
+                chart.options.scales.y.max = chartMax;
+                chart.options.scales.y.ticks.stepSize = Math.max(1, Math.floor(chartMax / 6));
+            }
+            
             chart.update();
+            
+            const assistanceAlert = document.getElementById('assistanceAlert');
+            const assistanceCount = document.getElementById('assistanceCount');
+            
+            if (data.counts.needAssistance > 0) {
+                assistanceCount.textContent = data.counts.needAssistance;
+                assistanceAlert.classList.add('show');
+            } else {
+                assistanceAlert.classList.remove('show');
+            }
         }
 
-        socket.on('updateResults', (counts) => {
-            updateChart(counts);
+        socket.on('updateResults', (data) => {
+            updateDisplay(data);
         });
 
         async function vote(voteType) {
@@ -176,7 +211,7 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    updateChart(data.counts);
+                    updateDisplay(data);
                 }
             } catch (error) {
                 console.error('Error voting:', error);
@@ -197,7 +232,7 @@
 
         fetch('/api/results')
             .then(response => response.json())
-            .then(counts => updateChart(counts));
+            .then(data => updateDisplay(data));
     </script>
 </body>
 </html>
