@@ -118,7 +118,7 @@
             </div>
             <div class="col-md-7">
                 <div class="panel">
-                    <h3 class="text-center mb-4">Progress Tracker</h3>
+                    <h3 class="text-center mb-4">Count of Ready</h3>
                     <div class="chart-container">
                         <canvas id="resultsChart"></canvas>
                     </div>
@@ -144,7 +144,7 @@
         const chart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['Ready to Move On'],
+                labels: [''],
                 datasets: [{
                     label: 'Participants',
                     data: [0],
