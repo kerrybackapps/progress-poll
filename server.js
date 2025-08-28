@@ -89,6 +89,14 @@ app.post('/api/admin/clear-all', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/clear-all', (req, res) => {
+  responses.needAssistance.clear();
+  responses.ready.clear();
+  
+  io.emit('updateResults', getResponseData());
+  res.json({ success: true, ...getResponseData() });
+});
+
 app.post('/api/admin/set-maximum', (req, res) => {
   if (!req.session.isAdmin) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
