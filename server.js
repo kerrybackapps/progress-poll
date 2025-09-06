@@ -20,6 +20,9 @@ let responses = {
 
 let chartMaximum = 30;
 
+let chatMessages = [];
+let messageIdCounter = 1;
+
 app.use(express.static('public'));
 app.use(express.json());
 app.use(cookieParser());
@@ -133,10 +136,43 @@ app.get('/api/results', (req, res) => {
   res.json(getResponseData());
 });
 
+// Chat endpoints
+app.get('/api/chat/messages', (req, res) => {
+  res.json(chatMessages);
+});
+
+app.post('/api/chat/message', (req, res) => {
+  const { content, author, userId, replyTo } = req.body;
+  
+  if (!content || !userId) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+  
+  const message = {
+    id: `msg_${messageIdCounter++}`,
+    content: content.substring(0, 500), // Limit message length
+    author: author || '',
+    userId: userId,
+    timestamp: Date.now(),
+    replyTo: replyTo || null
+  };
+  
+  chatMessages.push(message);
+  
+  // Keep only last 100 messages
+  if (chatMessages.length > 100) {
+    chatMessages = chatMessages.slice(-100);
+  }
+  
+  io.emit('newMessage', message);
+  res.json({ success: true, message });
+});
+
 io.on('connection', (socket) => {
   console.log('New client connected');
   
   socket.emit('updateResults', getResponseData());
+  socket.emit('messageHistory', chatMessages);
   
   socket.on('disconnect', () => {
     console.log('Client disconnected');
